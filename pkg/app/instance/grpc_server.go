@@ -13,12 +13,12 @@ func (a *AppInstance) initGRPCServer() error {
 
 	// expose port
 	port := viper.GetInt("service.port")
-	host := fmt.Sprintf(":%d", port)
 
-	log.Info(host)
 	if port == 0 {
 		return errors.New("Required service port for gRPC server")
 	}
+
+	host := fmt.Sprintf(":%d", port)
 
 	// Initializing GRPC server
 	return a.grpcServer.Init(host)

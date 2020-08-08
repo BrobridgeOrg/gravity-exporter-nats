@@ -1,2 +1,8 @@
 [service]
 port = 44144
+
+[nats]
+host = "0.0.0.0:32803"
+pingInterval = 10
+maxPingsOutstanding = 3
+maxReconnects = -1
