@@ -6,6 +6,7 @@ require (
 	github.com/BrobridgeOrg/gravity-api v0.0.0-20200808191818-646e409ed0b8
 	github.com/nats-io/nats-server/v2 v2.1.7 // indirect
 	github.com/nats-io/nats.go v1.10.0
+	github.com/prometheus/common v0.4.0
 	github.com/sirupsen/logrus v1.6.0
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/viper v1.7.1
