@@ -21,5 +21,17 @@ func NewService(a app.App) *Service {
 }
 
 func (service *Service) SendEvent(ctx context.Context, in *pb.SendEventRequest) (*pb.SendEventReply, error) {
-	return &pb.SendEventReply{}, nil
+
+	conn := service.app.GetEventBus().GetConnection()
+
+	err := conn.Publish(in.Channel, in.Payload)
+	if err != nil {
+		return &pb.SendEventReply{
+			Success: false,
+		}, err
+	}
+
+	return &pb.SendEventReply{
+		Success: true,
+	}, nil
 }
