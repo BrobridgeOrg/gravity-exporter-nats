@@ -1,13 +1,12 @@
 package exporter
 
 import (
-	"sync/atomic"
+	"io"
 
 	"golang.org/x/net/context"
 
 	pb "github.com/BrobridgeOrg/gravity-api/service/exporter"
 	app "github.com/BrobridgeOrg/gravity-exporter-nats/pkg/app"
-	"github.com/prometheus/common/log"
 )
 
 var counter uint64 = 0
@@ -28,13 +27,13 @@ func NewService(a app.App) *Service {
 }
 
 func (service *Service) SendEvent(ctx context.Context, in *pb.SendEventRequest) (*pb.SendEventReply, error) {
+	/*
+		id := atomic.AddUint64((*uint64)(&counter), 1)
 
-	id := atomic.AddUint64((*uint64)(&counter), 1)
-
-	if id%1000 == 0 {
-		log.Info(id)
-	}
-
+		if id%1000 == 0 {
+			log.Info(id)
+		}
+	*/
 	conn := service.app.GetEventBus().GetConnection()
 
 	err := conn.Publish(in.Channel, in.Payload)
@@ -45,4 +44,31 @@ func (service *Service) SendEvent(ctx context.Context, in *pb.SendEventRequest) 
 	}
 
 	return &SendEventSuccess, nil
+}
+
+func (service *Service) SendEventStream(stream pb.Exporter_SendEventStreamServer) error {
+
+	for {
+		in, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+
+		if err != nil {
+			return err
+		}
+		/*
+			id := atomic.AddUint64((*uint64)(&counter), 1)
+
+			if id%1000 == 0 {
+				log.Info(id)
+			}
+		*/
+		conn := service.app.GetEventBus().GetConnection()
+
+		err = conn.Publish(in.Channel, in.Payload)
+		if err != nil {
+			return err
+		}
+	}
 }
