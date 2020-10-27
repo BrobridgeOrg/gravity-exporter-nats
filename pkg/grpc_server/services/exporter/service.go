@@ -2,11 +2,13 @@ package exporter
 
 import (
 	"io"
+	"sync"
 
 	"golang.org/x/net/context"
 
 	pb "github.com/BrobridgeOrg/gravity-api/service/exporter"
 	app "github.com/BrobridgeOrg/gravity-exporter-nats/pkg/app"
+	log "github.com/sirupsen/logrus"
 )
 
 var counter uint64 = 0
@@ -14,16 +16,49 @@ var SendEventSuccess = pb.SendEventReply{
 	Success: true,
 }
 
+type Event struct {
+	Channel string
+	Payload []byte
+}
+
+var eventPool = sync.Pool{
+	New: func() interface{} {
+		return &Event{}
+	},
+}
+
 type Service struct {
-	app app.App
+	app      app.App
+	incoming chan *Event
 }
 
 func NewService(a app.App) *Service {
 
 	service := &Service{
-		app: a,
+		app:      a,
+		incoming: make(chan *Event, 4096),
 	}
+
+	go service.eventHandler()
+
 	return service
+}
+
+func (service *Service) eventHandler() {
+
+	for {
+		select {
+		case event := <-service.incoming:
+
+			conn := service.app.GetEventBus().GetConnection()
+
+			err := conn.Publish(event.Channel, event.Payload)
+			if err != nil {
+				log.Error(err)
+			}
+
+		}
+	}
 }
 
 func (service *Service) SendEvent(ctx context.Context, in *pb.SendEventRequest) (*pb.SendEventReply, error) {
@@ -64,11 +99,10 @@ func (service *Service) SendEventStream(stream pb.Exporter_SendEventStreamServer
 				log.Info(id)
 			}
 		*/
-		conn := service.app.GetEventBus().GetConnection()
+		event := eventPool.Get().(*Event)
+		event.Channel = in.Channel
+		event.Payload = in.Payload
 
-		err = conn.Publish(in.Channel, in.Payload)
-		if err != nil {
-			return err
-		}
+		service.incoming <- event
 	}
 }
