@@ -6,7 +6,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	_ "go.uber.org/automaxprocs"
 
 	app "github.com/BrobridgeOrg/gravity-exporter-nats/pkg/app/instance"
 )
