@@ -36,7 +36,7 @@ func NewService(a app.App) *Service {
 
 	service := &Service{
 		app:      a,
-		incoming: make(chan *Event, 4096),
+		incoming: make(chan *Event, 204800),
 	}
 
 	go service.eventHandler()
