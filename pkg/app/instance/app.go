@@ -7,6 +7,7 @@ import (
 	eventbus "github.com/BrobridgeOrg/gravity-exporter-nats/pkg/eventbus/service"
 	grpc_server "github.com/BrobridgeOrg/gravity-exporter-nats/pkg/grpc_server/server"
 	mux_manager "github.com/BrobridgeOrg/gravity-exporter-nats/pkg/mux_manager/manager"
+	subscriber "github.com/BrobridgeOrg/gravity-exporter-nats/pkg/subscriber/service"
 	"github.com/nats-io/nats.go"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -17,6 +18,7 @@ type AppInstance struct {
 	muxManager *mux_manager.MuxManager
 	grpcServer *grpc_server.Server
 	eventBus   *eventbus.EventBus
+	subscriber *subscriber.Subscriber
 }
 
 func NewAppInstance() *AppInstance {
@@ -55,6 +57,7 @@ func (a *AppInstance) Init() error {
 			MaxReconnects:       viper.GetInt("nats.maxReconnects"),
 		},
 	)
+	a.subscriber = subscriber.NewSubscriber(a)
 
 	a.initMuxManager()
 
@@ -66,6 +69,11 @@ func (a *AppInstance) Init() error {
 
 	// Initializing GRPC server
 	err = a.initGRPCServer()
+	if err != nil {
+		return err
+	}
+
+	err = a.subscriber.Init()
 	if err != nil {
 		return err
 	}
@@ -86,7 +94,14 @@ func (a *AppInstance) Run() error {
 		}
 	}()
 
-	err := a.runMuxManager()
+	go func() {
+		err := a.runMuxManager()
+		if err != nil {
+			log.Error(err)
+		}
+	}()
+
+	err := a.subscriber.Run()
 	if err != nil {
 		return err
 	}

@@ -3,6 +3,7 @@ package exporter
 import (
 	"io"
 	"sync"
+	"sync/atomic"
 
 	"golang.org/x/net/context"
 
@@ -92,13 +93,12 @@ func (service *Service) SendEventStream(stream pb.Exporter_SendEventStreamServer
 		if err != nil {
 			return err
 		}
-		/*
-			id := atomic.AddUint64((*uint64)(&counter), 1)
 
-			if id%1000 == 0 {
-				log.Info(id)
-			}
-		*/
+		id := atomic.AddUint64((*uint64)(&counter), 1)
+		if id%1000 == 0 {
+			log.Info(id)
+		}
+
 		event := eventPool.Get().(*Event)
 		event.Channel = in.Channel
 		event.Payload = in.Payload
