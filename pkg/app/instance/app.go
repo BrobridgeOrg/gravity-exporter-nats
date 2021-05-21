@@ -5,8 +5,6 @@ import (
 	"time"
 
 	eventbus "github.com/BrobridgeOrg/gravity-exporter-nats/pkg/eventbus/service"
-	grpc_server "github.com/BrobridgeOrg/gravity-exporter-nats/pkg/grpc_server/server"
-	mux_manager "github.com/BrobridgeOrg/gravity-exporter-nats/pkg/mux_manager/manager"
 	subscriber "github.com/BrobridgeOrg/gravity-exporter-nats/pkg/subscriber/service"
 	"github.com/nats-io/nats.go"
 	log "github.com/sirupsen/logrus"
@@ -15,8 +13,6 @@ import (
 
 type AppInstance struct {
 	done       chan bool
-	muxManager *mux_manager.MuxManager
-	grpcServer *grpc_server.Server
 	eventBus   *eventbus.EventBus
 	subscriber *subscriber.Subscriber
 }
@@ -37,8 +33,6 @@ func (a *AppInstance) Init() error {
 	}).Info("Starting application")
 
 	// Initializing modules
-	a.muxManager = mux_manager.NewMuxManager(a)
-	a.grpcServer = grpc_server.NewServer(a)
 	a.eventBus = eventbus.NewEventBus(
 		a,
 		viper.GetString("nats.host"),
@@ -59,16 +53,8 @@ func (a *AppInstance) Init() error {
 	)
 	a.subscriber = subscriber.NewSubscriber(a)
 
-	a.initMuxManager()
-
 	// Initializing EventBus
 	err := a.initEventBus()
-	if err != nil {
-		return err
-	}
-
-	// Initializing GRPC server
-	err = a.initGRPCServer()
 	if err != nil {
 		return err
 	}
@@ -85,21 +71,6 @@ func (a *AppInstance) Uninit() {
 }
 
 func (a *AppInstance) Run() error {
-
-	// GRPC
-	go func() {
-		err := a.runGRPCServer()
-		if err != nil {
-			log.Error(err)
-		}
-	}()
-
-	go func() {
-		err := a.runMuxManager()
-		if err != nil {
-			log.Error(err)
-		}
-	}()
 
 	err := a.subscriber.Run()
 	if err != nil {
