@@ -8,5 +8,7 @@ RUN CGO_ENABLED=0 go build -installsuffix cgo -o /gravity-exporter-nats ./cmd/gr
 FROM alpine:3.12
 COPY --from=builder /gravity-exporter-nats /gravity-exporter-nats
 COPY ./configs .
+
+USER 1001
 EXPOSE 44144
 CMD ["/gravity-exporter-nats"]
