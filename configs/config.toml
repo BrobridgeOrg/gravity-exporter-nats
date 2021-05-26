@@ -1,3 +1,15 @@
+[gravity]
+host = "0.0.0.0:32803"
+
+[subscriber]
+subscriber_id = "nats_exporter"
+subscriber_name = "NATS Exporter"
+state_store = "./statestore"
+worker_count = 16
+
+[rules]
+subscription = "./settings/subscriptions.json"
+
 [service]
 port = 44144
 
