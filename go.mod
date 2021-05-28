@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/BrobridgeOrg/gravity-api v0.2.14
-	github.com/BrobridgeOrg/gravity-sdk v0.0.8
+	github.com/BrobridgeOrg/gravity-sdk v0.0.12
 	github.com/BrobridgeOrg/gravity-transmitter-postgres v0.0.0-20210521202000-7255c776322a
 	github.com/jinzhu/copier v0.3.0
 	github.com/nats-io/nats-server/v2 v2.1.7 // indirect
