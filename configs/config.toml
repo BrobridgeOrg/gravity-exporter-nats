@@ -5,7 +5,8 @@ host = "0.0.0.0:32803"
 subscriber_id = "nats_exporter"
 subscriber_name = "NATS Exporter"
 state_store = "./statestore"
-worker_count = 16
+worker_count = 4
+verbose = true
 
 [rules]
 subscription = "./settings/subscriptions.json"

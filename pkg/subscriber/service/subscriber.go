@@ -45,6 +45,7 @@ func (subscriber *Subscriber) processData(msg *gravity_subscriber.Message) error
 			log.Info(id)
 		}
 	*/
+
 	pj := projectionPool.Get().(*gravity_sdk_types_projection.Projection)
 	defer projectionPool.Put(pj)
 
@@ -82,6 +83,9 @@ func (subscriber *Subscriber) processData(msg *gravity_subscriber.Message) error
 			<-time.After(time.Second * 5)
 		}
 	}
+
+	msg.Ack()
+
 	return nil
 }
 
@@ -135,7 +139,7 @@ func (subscriber *Subscriber) Init() error {
 	// Initializing gravity subscriber and connecting to server
 	viper.SetDefault("subscriber.worker_count", 4)
 	options := gravity_subscriber.NewOptions()
-	options.Verbose = false
+	options.Verbose = viper.GetBool("subscriber.verbose")
 	options.StateStore = subscriber.stateStore
 	options.WorkerCount = viper.GetInt("subscriber.worker_count")
 
@@ -145,6 +149,9 @@ func (subscriber *Subscriber) Init() error {
 	if err != nil {
 		return err
 	}
+
+	// Setup data handler
+	subscriber.subscriber.SetEventHandler(subscriber.eventHandler)
 
 	// Register subscriber
 	log.Info("Registering subscriber")
@@ -170,23 +177,20 @@ func (subscriber *Subscriber) Init() error {
 	return nil
 }
 
+func (subscriber *Subscriber) eventHandler(msg *gravity_subscriber.Message) {
+
+	err := subscriber.processData(msg)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+}
+
 func (subscriber *Subscriber) Run() error {
 
 	log.WithFields(log.Fields{}).Info("Starting to fetch data from gravity...")
-	_, err := subscriber.subscriber.Subscribe(func(msg *gravity_subscriber.Message) {
 
-		err := subscriber.processData(msg)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-
-		msg.Ack()
-	})
-	if err != nil {
-		log.Error(err)
-		return err
-	}
+	subscriber.subscriber.Start()
 
 	return nil
 }

@@ -3,9 +3,8 @@ module github.com/BrobridgeOrg/gravity-exporter-nats
 go 1.13
 
 require (
-	github.com/BrobridgeOrg/gravity-api v0.2.14
-	github.com/BrobridgeOrg/gravity-sdk v0.0.8
-	github.com/BrobridgeOrg/gravity-transmitter-postgres v0.0.0-20210521202000-7255c776322a
+	github.com/BrobridgeOrg/gravity-sdk v0.0.14
+	github.com/BrobridgeOrg/gravity-transmitter-postgres v0.0.0-20210606011430-9ba5bcd62261
 	github.com/jinzhu/copier v0.3.0
 	github.com/nats-io/nats-server/v2 v2.1.7 // indirect
 	github.com/nats-io/nats.go v1.10.0
@@ -19,5 +18,3 @@ require (
 	google.golang.org/grpc/examples v0.0.0-20200807164945-d3e3e7a46f57 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 )
-
-//replace github.com/BrobridgeOrg/gravity-api v0.0.0-20200808075207-3326e6e4eea1 => ../gravity-api
