@@ -4,10 +4,9 @@ Gravity exporter for NATS messsaging system.
 
 ## Installation
 
-You can compile pilotware with the following commands:
+You can compile gravity-exporter-nats with the following commands:
 
 ```shell
-go generate ./cmd/gravity-exporter-nats
 go build ./cmd/gravity-exporter-nats
 ```
 
