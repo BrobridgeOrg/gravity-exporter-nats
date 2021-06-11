@@ -11,9 +11,6 @@ verbose = true
 [rules]
 subscription = "./settings/subscriptions.json"
 
-[service]
-port = 44144
-
 [nats]
 host = "0.0.0.0:32803"
 pingInterval = 10
