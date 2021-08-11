@@ -3,7 +3,7 @@ module github.com/BrobridgeOrg/gravity-exporter-nats
 go 1.13
 
 require (
-	github.com/BrobridgeOrg/gravity-sdk v0.0.34
+	github.com/BrobridgeOrg/gravity-sdk v0.0.38
 	github.com/nats-io/nats-server/v2 v2.1.7 // indirect
 	github.com/nats-io/nats.go v1.11.0
 	github.com/sirupsen/logrus v1.8.1
