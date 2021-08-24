@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/BrobridgeOrg/gravity-exporter-nats/pkg/app"
@@ -13,18 +12,11 @@ import (
 	"github.com/BrobridgeOrg/gravity-sdk/core/keyring"
 	gravity_subscriber "github.com/BrobridgeOrg/gravity-sdk/subscriber"
 	gravity_state_store "github.com/BrobridgeOrg/gravity-sdk/subscriber/state_store"
-	gravity_sdk_types_projection "github.com/BrobridgeOrg/gravity-sdk/types/projection"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
 var counter uint64 = 0
-
-var projectionPool = sync.Pool{
-	New: func() interface{} {
-		return &gravity_sdk_types_projection.Projection{}
-	},
-}
 
 type Subscriber struct {
 	app        app.App
@@ -48,19 +40,14 @@ func (subscriber *Subscriber) processData(msg *gravity_subscriber.Message) error
 		}
 	*/
 
-	pj := projectionPool.Get().(*gravity_sdk_types_projection.Projection)
-	defer projectionPool.Put(pj)
-
-	// Parsing data
-	err := gravity_sdk_types_projection.Unmarshal(msg.Event.Data, pj)
-	if err != nil {
-		return err
-	}
+	event := msg.Payload.(*gravity_subscriber.DataEvent)
+	pj := event.Payload
 
 	// Getting channels for specific collection
 	channels, ok := subscriber.ruleConfig.Subscriptions[pj.Collection]
 	if !ok {
-		return err
+		// skip
+		return nil
 	}
 
 	// Convert projection to record
