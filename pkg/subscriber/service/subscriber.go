@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/BrobridgeOrg/gravity-exporter-nats/pkg/app"
@@ -12,11 +14,28 @@ import (
 	"github.com/BrobridgeOrg/gravity-sdk/core/keyring"
 	gravity_subscriber "github.com/BrobridgeOrg/gravity-sdk/subscriber"
 	gravity_state_store "github.com/BrobridgeOrg/gravity-sdk/subscriber/state_store"
+	gravity_sdk_types_record "github.com/BrobridgeOrg/gravity-sdk/types/record"
+
+	"github.com/jinzhu/copier"
+	jsoniter "github.com/json-iterator/go"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
 var counter uint64 = 0
+
+type Packet struct {
+	EventName  string                 `json:"event"`
+	Collection string                 `json:"collection"`
+	Payload    map[string]interface{} `json:"payload"`
+	Meta       map[string]interface{} `json:"meta"`
+}
+
+var packetPool = sync.Pool{
+	New: func() interface{} {
+		return &Packet{}
+	},
+}
 
 type Subscriber struct {
 	app        app.App
@@ -32,13 +51,12 @@ func NewSubscriber(a app.App) *Subscriber {
 }
 
 func (subscriber *Subscriber) processData(msg *gravity_subscriber.Message) error {
-	/*
-		id := atomic.AddUint64((*uint64)(&counter), 1)
 
-		if id%100 == 0 {
-			log.Info(id)
-		}
-	*/
+	id := atomic.AddUint64((*uint64)(&counter), 1)
+
+	if id%1000 == 0 {
+		log.Info(id)
+	}
 
 	event := msg.Payload.(*gravity_subscriber.DataEvent)
 	pj := event.Payload
@@ -135,6 +153,9 @@ func (subscriber *Subscriber) Init() error {
 	options.Domain = domain
 	options.StateStore = subscriber.stateStore
 	options.WorkerCount = viper.GetInt("subscriber.workerCount")
+	options.ChunkSize = viper.GetInt("subscriber.chunkSize")
+	options.InitialLoad.Enabled = viper.GetBool("initialLoad.enabled")
+	options.InitialLoad.OmittedCount = viper.GetUint64("initialLoad.omittedCount")
 
 	// Loading access key
 	viper.SetDefault("subscriber.appID", "anonymous")
@@ -150,6 +171,7 @@ func (subscriber *Subscriber) Init() error {
 
 	// Setup data handler
 	subscriber.subscriber.SetEventHandler(subscriber.eventHandler)
+	subscriber.subscriber.SetSnapshotHandler(subscriber.snapshotHandler)
 
 	// Register subscriber
 	log.Info("Registering subscriber")
@@ -235,6 +257,73 @@ func (subscriber *Subscriber) eventHandler(msg *gravity_subscriber.Message) {
 		log.Error(err)
 		return
 	}
+}
+
+func (subscriber *Subscriber) snapshotHandler(msg *gravity_subscriber.Message) {
+
+	event := msg.Payload.(*gravity_subscriber.SnapshotEvent)
+	snapshotRecord := event.Payload
+
+	// Getting tables for specific collection
+	channels, ok := subscriber.ruleConfig.Subscriptions[event.Collection]
+	if !ok {
+		return
+	}
+
+	// Prepare record for event
+	var record gravity_sdk_types_record.Record
+	err := gravity_sdk_types_record.UnmarshalMapData(snapshotRecord.Payload.AsMap(), &record)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	// Send event to each channel
+	conn := subscriber.app.GetEventBus().GetConnection()
+	for _, channel := range channels {
+
+		var rs gravity_sdk_types_record.Record
+		copier.Copy(&rs, record)
+
+		// TODO: using batch mechanism to improve performance
+		packet := packetPool.Get().(*Packet)
+		for {
+			//Scanning fields
+			payload := make(map[string]interface{}, len(rs.Fields))
+			for _, field := range rs.Fields {
+				key := field.Name
+				value := gravity_sdk_types_record.GetValue(field.Value)
+				payload[key] = value
+			}
+
+			packet.EventName = "snapshot"
+			packet.Payload = payload
+			packet.Collection = event.Collection
+
+			if snapshotRecord.Meta != nil {
+				packet.Meta = snapshotRecord.Meta.AsMap()
+			}
+
+			//convert to byte
+			newPacket, err := jsoniter.Marshal(packet)
+			if err != nil {
+				log.Error(err)
+				<-time.After(time.Second * 5)
+				continue
+			}
+
+			err = conn.Publish(channel, newPacket)
+			if err == nil {
+				packetPool.Put(packet)
+				break
+			}
+
+			log.Error(err)
+
+			<-time.After(time.Second * 5)
+		}
+	}
+	msg.Ack()
 }
 
 func (subscriber *Subscriber) Run() error {
